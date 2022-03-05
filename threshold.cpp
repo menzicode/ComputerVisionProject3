@@ -33,7 +33,6 @@ int threshold(Mat &src, Mat &dst, int thresh) {
     for (int i = 0; i < 256; i++){
         p[i] = table[i];
     }
-    std::cout<< lookUpTable.size() << "\n" << table;
     LUT(intensity3c, lookUpTable, dst);
 
     return 0;
