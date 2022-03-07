@@ -5,39 +5,6 @@ using namespace cv;
 
 enum TYPE { EROSION, DILATION };
 
-// int erosion(cv::Mat &src, cv::Mat &dst, cv::Mat &str) {
-//     Mat comp;
-//     str.convertTo(comp, CV_8U, 255);
-//     int osCol = (str.cols - 1) / 2;
-//     int osRow = (str.rows - 1) / 2;
-//     double s = sum(comp)[0];
-
-//     for (int i = osRow; i < src.rows - osRow; i++) {
-//         for (int j = osCol; j < src.cols - osCol; j++) {
-//             Mat ar = src.rowRange(i - osRow, i + osRow + 1);
-//             Mat ac = ar.colRange(j - osCol, j + osCol + 1);
-//             std::vector<Mat> planes(3);
-//             split(ac, planes);
-//             Mat pix;
-//             Mat ad = planes[0];
-//             ad.convertTo(pix, CV_8U);
-//             Mat scal = str.mul(pix);
-//             Mat sub; 
-//             subtract(comp, scal, sub);
-//             double subsum = sum(sub)[0];
-//             if (subsum == 0) {
-//                 dst.ptr<uchar>(i)[j] = 255;
-//             }
-//             else {
-//                 dst.ptr<uchar>(i)[j] = 0;
-//             }
-//         }
-//     }
-
-//     return 0;
-// }
-
-
 
 int morph(cv::Mat &src, cv::Mat &dst, cv::Mat &str, TYPE tp) {
     Mat comp;
@@ -198,10 +165,124 @@ int open(Mat &src, Mat &dst, Mat &str) {
 }
 
 int close(Mat &src, Mat &dst, Mat &str) {
-    Mat i_mat = Mat::zeros(src.rows, src.cols, CV_8U);
+    Mat i_mat = Mat::ones(src.rows, src.cols, CV_8U);
     morph(src, i_mat, str, DILATION);
     morph(i_mat, dst, str, EROSION);
     return 0;
 }
 
+int grassfire_shrink(Mat &src, Mat &dst, int distance_threshold) {
+    Mat distances = Mat::ones(src.rows, src.cols, CV_8U);
+    for (int i = 1; i < src.rows; i++) {
+        for (int j = 1; j < src.cols; j++) {
+            int up_img = src.ptr<uchar>(i-1)[j];
+            int left_img = src.ptr<uchar>(i)[j-1];
+            int up_dist = distances.ptr<uchar>(i-1)[j];
+            int left_dist = distances.ptr<uchar>(i)[j-1];
+            if (up_img == 0 || left_img == 0) {
+                distances.ptr<uchar>(i)[j] = 1;
+            }
+            else {
+                if (up_dist < left_dist) {
+                    distances.ptr<uchar>(i)[j] = up_dist + 1;  
+                }
+                else {
+                    distances.ptr<uchar>(i)[j] = left_dist + 1;
+                }
+            }
+        }
+    }
+    for (int i = src.rows - 1; i >= 0; i--) {
+        for (int j = src.cols - 1; j >= 0; j--) {
+            int down_img = src.ptr<uchar>(i+1)[j];
+            int right_img = src.ptr<uchar>(i)[j+1];
+            int down_dist = distances.ptr<uchar>(i+1)[j];
+            int right_dist = distances.ptr<uchar>(i)[j+1];
+            int pix = distances.ptr<uchar>(i)[j];
+            if (down_img == 0 || right_img == 0) {
+                distances.ptr<uchar>(i)[j] = 1;
+            }
+            else {
+                if (down_dist < right_dist && down_dist < pix) {
+                    distances.ptr<uchar>(i)[j] = down_dist + 1;  
+                }
+                else if (right_dist < down_dist && right_dist < pix) {
+                    distances.ptr<uchar>(i)[j] = right_dist + 1;
+                }
+                else {
+                    distances.ptr<uchar>(i)[j] = pix;
+                }
+            }
+        }
+    }
+    for (int i = 0; i < src.rows; i++) {
+        for (int j = 0; j < src.cols; j++) {
+            if (distances.ptr<uchar>(i)[j] < distance_threshold) {
+                dst.ptr<uchar>(i)[j] = 0;
+            }
+            else {
+                dst.ptr<uchar>(i)[j] = 255;
+            }
+        }
+    }
+    //std::cout<<distances;
+    return 0;
+}
 
+int grassfire_grow(Mat &src, Mat &dst, int distance_threshold) {
+    Mat distances = Mat::ones(src.rows, src.cols, CV_8U);
+    for (int i = 1; i < src.rows; i++) {
+        for (int j = 1; j < src.cols; j++) {
+            int up_img = src.ptr<uchar>(i-1)[j];
+            int left_img = src.ptr<uchar>(i)[j-1];
+            int up_dist = distances.ptr<uchar>(i-1)[j];
+            int left_dist = distances.ptr<uchar>(i)[j-1];
+            if (up_img == 255 || left_img == 255) {
+                distances.ptr<uchar>(i)[j] = 1;
+            }
+            else {
+                if (up_dist < left_dist) {
+                    distances.ptr<uchar>(i)[j] = up_dist + 1;  
+                }
+                else {
+                    distances.ptr<uchar>(i)[j] = left_dist + 1;
+                }
+            }
+        }
+    }
+    for (int i = src.rows - 1; i >= 0; i--) {
+        for (int j = src.cols - 1; j >= 0; j--) {
+            int down_img = src.ptr<uchar>(i+1)[j];
+            int right_img = src.ptr<uchar>(i)[j+1];
+            int down_dist = distances.ptr<uchar>(i+1)[j];
+            int right_dist = distances.ptr<uchar>(i)[j+1];
+            int pix = distances.ptr<uchar>(i)[j];
+            if (down_img == 255 || right_img == 255) {
+                distances.ptr<uchar>(i)[j] = 1;
+            }
+            else {
+                if (down_dist < right_dist && down_dist < pix) {
+                    distances.ptr<uchar>(i)[j] = down_dist + 1;  
+                }
+                else if (right_dist < down_dist && right_dist < pix) {
+                    distances.ptr<uchar>(i)[j] = right_dist + 1;
+                }
+                else {
+                    distances.ptr<uchar>(i)[j] = pix;
+                }
+            }
+        }
+    }
+    for (int i = 0; i < src.rows; i++) {
+        for (int j = 0; j < src.cols; j++) {
+            if (distances.ptr<uchar>(i)[j] < distance_threshold) {
+                dst.ptr<uchar>(i)[j] = 255;
+            }
+            else {
+                dst.ptr<uchar>(i)[j] = 0;
+            }
+        }
+    }
+    //std::cout<<distances;
+    return 0;
+}

@@ -16,5 +16,7 @@ int erosion(cv::Mat &src, cv::Mat &dst, cv::Mat &str);
 int dilation(cv::Mat &src, cv::Mat &dst, cv::Mat &str);
 int open(cv::Mat &src, cv::Mat &dst, cv::Mat &str);
 int close(cv::Mat &src, cv::Mat &dst, cv::Mat &str);
+int grassfire_grow(cv::Mat &src, cv::Mat &dst, int distance_threshold);
+int grassfire_shrink(cv::Mat &src, cv::Mat &dst, int distance_threshold);
 
 #endif
